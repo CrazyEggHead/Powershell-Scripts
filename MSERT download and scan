@@ -1,0 +1,8 @@
+# This Script downloads the latest MSERT from Microsoft and initiates a scan
+
+New-Item -ItemType directory -Path C:\msert-scan
+$url = "http://definitionupdates.microsoft.com/download/definitionupdates/safetyscanner/amd64/msert.exe"
+$outpath = "c:\msert-scan\msert.exe"
+Invoke-WebRequest -Uri $url -OutFile $outpath
+Start-Process -Filepath "c:\msert-scan\msert.exe" -ArgumentList "/Q /F:Y"
+Remove-Item -Path C:\msert-scan\msert.exe

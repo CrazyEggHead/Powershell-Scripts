@@ -1,5 +1,6 @@
-# Source: https://www.smartmontools.org/wiki/NVMe_Support
+# Source for smartmontools (smartctl.exe):  https://www.smartmontools.org/wiki/Download
 # This script can be run with PDQ (pdq.com) Inventory Powershell Scan Profile (or other means of remote powershell execution)
+
 $results = $null
 \\UNC-Path\PDQ_Repo_2\SmartCTL\smartctl --scan | Out-File disks.csv
 $disktest = get-content .\disks.csv

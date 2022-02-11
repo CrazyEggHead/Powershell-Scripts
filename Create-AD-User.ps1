@@ -3,32 +3,25 @@ Import-Module ActiveDirectory
 
 #================================================================================================================================================
 
-# Collect username and optional groups to add user to. 
+# Collect username and password
 $UserFirstName = Read-Host -Prompt "User's first name"
 Write-Host `n
 $UserLastName = Read-Host -Prompt "User's last name"
 Write-Host `n
-$Building = Read-Host -Prompt "Which Building,  A or B? "
+$Building = Read-Host -Prompt "Which 75x Building,  A or B? "
 Write-Host `n
 $CadUser = Read-Host -Prompt "Is this a CAD User?  Y or N? "
 
-# Set up username variables to use later
-$ADLogonName = "$UserFirstName.$UserLastName"  # "first.last" name
-$ADUserDistName = "$UserFirstName $UserLastName" # "first last" name
+# Set up some username variables to use later
+$ADLogonName = "$UserFirstName.$UserLastName"
+$ADUserDistName = "$UserFirstName $UserLastName"
 
 # Define variables to be used to add user
 $Username    = $ADUserDistName
-$Password    = ConvertTo-SecureString -String "TempP@ssWord12" -AsPlainText -Force
+$Password    = ConvertTo-SecureString -String "P@SSW0RD1" -AsPlainText -Force
 $Firstname   = $UserFirstName
 $Lastname    = $UserLastName
-$OU          = "OU=Active Employees,OU=SBSUsers,OU=Users,OU=MyBusiness,DC=domain,DC=local"
-$domainLocal = '@domain.local'
-$domainCom = '@domain.com'
-$domainOnmicrosoft = '@domain.onmicrosoft.com'
-
-
-
-
+$OU          = "OU=Active Employees,OU=SBSUsers,OU=Users,OU=MyBusiness,DC=contoso,DC=local"
 
        #Check if the user account already exists in AD
        if (Get-ADUser -F {SamAccountName -eq $Username})
@@ -39,48 +32,65 @@ $domainOnmicrosoft = '@domain.onmicrosoft.com'
        else
        {
           #If a user does not exist then create a new user account
-          New-ADUser -SamAccountName $Username -UserPrincipalName "$Username$domainLocal" -Name "$Firstname $Lastname" -GivenName $Firstname -Surname $Lastname -Enabled $True -ChangePasswordAtLogon $False -DisplayName "$FirstName, $LastName" -Path $OU -AccountPassword $Password
+          New-ADUser -SamAccountName $ADLogonName -UserPrincipalName "$ADLogonName@contoso.local" -Name "$Firstname $Lastname" -GivenName $Firstname -Surname $Lastname -Enabled $True -ChangePasswordAtLogon $False -DisplayName "$FirstName $LastName" -Path $OU -AccountPassword $Password
 
        }
 
 
 
 # Add attributes to account
-Set-ADUser -Identity $ADUserDistName -Add @{ProxyAddresses="SMTP:$ADLogonName$domainCom"}
-Set-ADUser -Identity $ADUserDistName -Add @{ProxyAddresses="smtp:$ADLogonName$domainOnmicrosoft"}
-Set-ADUser -Identity $ADUserDistName -Add @{Mail = "$ADLogonName$domainCom"}
-Set-ADUser -Identity $ADUserDistName -Add @{MailNickName = "$ADLogonName"}
+Set-ADUser -Identity $ADLogonName -Add @{ProxyAddresses="SMTP:$ADLogonName@contoso.com"}
+Set-ADUser -Identity $ADLogonName -Add @{ProxyAddresses="smtp:$ADLogonName@contoso.onmicrosoft.com"}
+Set-ADUser -Identity $ADLogonName -Add @{Mail = "$ADLogonName@contoso.com"}
+Set-ADUser -Identity $ADLogonName -Add @{MailNickName = "$ADLogonName"}
 
 # Add members to groups
-Add-ADGroupMember -Identity "All Users" -Members "$ADUserDistName"
-Add-ADGroupMember -Identity "Domain Location" -Members "$ADUserDistName"
-Add-ADGroupMember -Identity "Domain Standard Access" -Members "$ADUserDistName"
-Add-ADGroupMember -Identity "Domain Shared" -Members "$ADUserDistName"
-Add-ADGroupMember -Identity "VPN Access" -Members "$ADUserDistName"
+Add-ADGroupMember -Identity "All Users" -Members "$ADLogonName"
+Add-ADGroupMember -Identity "Contoso Standard Access" -Members "$ADLogonName"
+Add-ADGroupMember -Identity "Contoso Shared" -Members "$ADLogonName"
+Add-ADGroupMember -Identity "Virtual Private Network Users" -Members "$ADLogonName"
 
 if ($Building -eq "a"){
-    Add-ADGroupMember -Identity "BuildingA" -Members "$ADUserDistName"
+    Add-ADGroupMember -Identity "75A" -Members "$ADLogonName"
     }
 if ($Building -eq "b"){
-    Add-ADGroupMember -Identity "BuildingB" -Members "$ADUserDistName"
+    Add-ADGroupMember -Identity "75B" -Members "$ADLogonName"
     }
 
 if ($CadUser -eq "y"){
-    Add-ADGroupMember -Identity "Cad users" -Members "$ADUserDistName"
+    Add-ADGroupMember -Identity "Cad users" -Members "$ADLogonName"
     }
-
-    write-host "Processing request, please wait..." #Pause needed before displaying which groups user is a member of to work
+	
+	write-host "Creating user account under My Business > Users > SBSUsers > Active Employees "
+    write-host "Processing request, please wait..."
     start-sleep (15)
 #====================================================================================================
 # Show output of settings applied
-
+#
 Write-Host `n
 Write-Host "Now showing the user properties as reported by AD: `n"
-Get-ADUser -Identity $ADUserDistName
-
+$ShowADUser = Get-ADUser -Identity $ADLogonName
+$ShowADUser
+#
 Write-Host "Your new user is a member of the following groups:" -ForegroundColor Yellow
-
+#
 $showgroups = @()
-Get-ADPrincipalGroupMembership $ADUserDistName | Sort-Object Name | Select-Object name | Format-table
-
+$ShowAdGroups = Get-ADPrincipalGroupMembership $ADLogonName | Sort-Object Name | Select-Object name | Format-table
+$ShowAdGroups 
 #====================================================================================================
+
+#Email Section
+
+## This section needs help, broken.  
+
+
+$MailFrom = 'systems@contoso.com'
+$MailTo = 'user@contoso.com'
+$MailServer = 'contoso.mail.protection.outlook.com'
+
+$MailBody = "New User Created: $ADUserDistName" + '<br>' + "$ShowADUser" + '<br>' + "$ShowAdGroups"
+$mailBody = $MailBody | Out-String
+$MailSubject = "New AD User created on Domain Controller"
+
+
+#Send-MailMessage -From $MailFrom -To $MailTo -Subject $MailSubject -BodyAsHtml -Body $MailBody -SmtpServer $MailServer 
